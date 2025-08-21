@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { getAllMembers, Member } from '@/lib/supabase';
-import { Search, MapPin, Crown, Users, Wifi, WifiOff, ChevronUp, ChevronDown } from 'lucide-react';
+import { Search, MapPin, Crown, Users, Wifi, WifiOff, ChevronUp, ChevronDown, UserPlus } from 'lucide-react';
+import { useWallet } from '@/hooks/useWallet';
+import ProfileSetup from './ProfileSetup';
+import MemberDetailModal from './MemberDetailModal';
 
 interface MembersOverlayProps {
   isVisible: boolean;
@@ -15,6 +18,10 @@ const MembersOverlay: React.FC<MembersOverlayProps> = ({ isVisible }) => {
   const [supabaseMembers, setSupabaseMembers] = useState<Member[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
   const [touchStartY, setTouchStartY] = useState(0);
+  const [showProfileSetup, setShowProfileSetup] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [showMemberDetail, setShowMemberDetail] = useState(false);
+  const wallet = useWallet();
 
   useEffect(() => {
     const loadMembers = async () => {
@@ -129,6 +136,39 @@ const MembersOverlay: React.FC<MembersOverlayProps> = ({ isVisible }) => {
     );
   };
 
+  const handleShowProfileSetup = async () => {
+    if (!wallet.isConnected) {
+      await wallet.connectWallet();
+    }
+    setShowProfileSetup(true);
+  };
+
+  const handleProfileSetupComplete = () => {
+    setShowProfileSetup(false);
+    // Reload members to show updated profile
+    const loadMembers = async () => {
+      const members = await getAllMembers();
+      if (members && members.length > 0) {
+        const founders = members.filter(member => member.role === 'Founder');
+        setSupabaseMembers(founders);
+      }
+    };
+    if (isVisible) loadMembers();
+  };
+
+  const handleMemberClick = (member: Member) => {
+    setSelectedMember(member);
+    setShowMemberDetail(true);
+  };
+
+  const handleCloseMemberDetail = () => {
+    setShowMemberDetail(false);
+    // Small delay to allow exit animation to complete
+    setTimeout(() => {
+      setSelectedMember(null);
+    }, 300);
+  };
+
   if (!isVisible) return null;
 
   return (
@@ -171,10 +211,17 @@ const MembersOverlay: React.FC<MembersOverlayProps> = ({ isVisible }) => {
             </div>
           </div>
 
-          <div className="text-center">
+          <div className="text-center space-y-3">
             <button className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 shadow-lg hover:shadow-xl">
               <Users className="w-4 h-4" />
               Connect All
+            </button>
+            <button 
+              onClick={handleShowProfileSetup}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all duration-200 shadow-lg hover:shadow-xl"
+            >
+              <UserPlus className="w-4 h-4" />
+              Setup Profile
             </button>
           </div>
         </div>
@@ -189,11 +236,12 @@ const MembersOverlay: React.FC<MembersOverlayProps> = ({ isVisible }) => {
               return (
                 <div 
                   key={index} 
-                  className="group bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 hover:border-white/20 transition-all duration-200 hover:scale-[1.02]"
+                  onClick={() => handleMemberClick(member)}
+                  className="group bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 hover:border-white/20 transition-all duration-300 hover:scale-[1.03] hover:shadow-xl hover:shadow-blue-500/20 cursor-pointer transform hover:-translate-y-1 active:scale-[0.98]"
                 >
                   <div className="flex items-start gap-4">
                     <div className="relative flex-shrink-0">
-                      <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center overflow-hidden">
+                      <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center overflow-hidden group-hover:scale-110 transition-transform duration-300 group-hover:shadow-lg">
                         {getAvatarContent(member)}
                       </div>
                       <div className={`absolute -bottom-1 -right-1 w-4 h-4 ${status.color} rounded-full border-2 border-black flex items-center justify-center`}>
@@ -302,10 +350,17 @@ const MembersOverlay: React.FC<MembersOverlayProps> = ({ isVisible }) => {
               </div>
             </div>
 
-            <div className="text-center">
+            <div className="text-center space-y-2">
               <button className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-medium rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 text-sm">
                 <Users className="w-4 h-4" />
                 Connect All
+              </button>
+              <button 
+                onClick={handleShowProfileSetup}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all duration-200 text-sm"
+              >
+                <UserPlus className="w-4 h-4" />
+                Setup Profile
               </button>
             </div>
           </div>
@@ -326,11 +381,12 @@ const MembersOverlay: React.FC<MembersOverlayProps> = ({ isVisible }) => {
                   return (
                     <div 
                       key={index} 
-                      className="group bg-white/5 border border-white/10 rounded-xl p-3 hover:bg-white/10 hover:border-white/20 transition-all duration-200"
+                      onClick={() => handleMemberClick(member)}
+                      className="group bg-white/5 border border-white/10 rounded-xl p-3 hover:bg-white/10 hover:border-white/20 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-blue-500/10 cursor-pointer transform active:scale-[0.98]"
                     >
                       <div className="flex items-start gap-3">
                         <div className="relative flex-shrink-0">
-                          <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center overflow-hidden">
+                          <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center overflow-hidden group-hover:scale-110 transition-transform duration-300 group-hover:shadow-lg">
                             {getAvatarContent(member)}
                           </div>
                           <div className={`absolute -bottom-1 -right-1 w-3 h-3 ${status.color} rounded-full border-2 border-black flex items-center justify-center`}>
@@ -374,6 +430,23 @@ const MembersOverlay: React.FC<MembersOverlayProps> = ({ isVisible }) => {
           </div>
         </div>
       </div>
+
+      {/* Profile Setup Modal */}
+      {showProfileSetup && wallet.address && (
+        <ProfileSetup
+          isVisible={showProfileSetup}
+          walletAddress={wallet.address}
+          onComplete={handleProfileSetupComplete}
+          onClose={() => setShowProfileSetup(false)}
+        />
+      )}
+
+      {/* Member Detail Modal */}
+      <MemberDetailModal
+        isVisible={showMemberDetail}
+        member={selectedMember}
+        onClose={handleCloseMemberDetail}
+      />
     </>
   );
 };

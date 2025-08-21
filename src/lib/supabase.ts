@@ -168,6 +168,7 @@ export async function getMemberByWallet(wallet: string): Promise<Member | null> 
     if (error) {
       if (error.code === 'PGRST116') {
         // No member found
+        console.log('No member found');
         return null;
       }
       console.error('Error fetching member by wallet:', error);

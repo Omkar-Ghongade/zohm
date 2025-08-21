@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { upsertMemberByWallet } from '@/lib/supabase';
 
 interface ProfileSetupProps {
   isVisible: boolean;
@@ -122,21 +122,22 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from('members')
-        .update({
-          name: profileData.name.trim(),
-          bio: profileData.bio.trim(),
-          culture: profileData.culture,
-          lat: profileData.lat,
-          lng: profileData.lng,
-          calendar_url: profileData.calendar_url.trim() || null,
-          last_seen: new Date().toISOString()
-        })
-        .eq('wallet', walletAddress);
+      const memberData = {
+        wallet: walletAddress.toLowerCase(),
+        name: profileData.name.trim(),
+        bio: profileData.bio.trim(),
+        culture: profileData.culture,
+        lat: profileData.lat ?? undefined,
+        lng: profileData.lng ?? undefined,
+        calendar_url: profileData.calendar_url.trim() || undefined,
+        last_seen: new Date().toISOString(),
+        role: 'Founder' // Default role for new members
+      };
 
-      if (error) {
-        throw error;
+      const result = await upsertMemberByWallet(memberData);
+
+      if (!result) {
+        throw new Error('Failed to save member data');
       }
 
       console.log('✅ Profile setup completed successfully');
