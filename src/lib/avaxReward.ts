@@ -62,7 +62,7 @@ export function parseAVAX(avaxAmount: number): bigint {
  */
 export async function getCurrentGasPrice(provider: ethers.JsonRpcProvider): Promise<bigint> {
   try {
-    return await provider.getFeeData().then(feeData => feeData.gasPrice || 0n);
+    return await provider.getFeeData().then(feeData => feeData.gasPrice);
   } catch (error) {
     console.warn('Failed to get current gas price, using default:', error);
     // Return a reasonable default gas price for Fuji testnet (20 Gwei)
